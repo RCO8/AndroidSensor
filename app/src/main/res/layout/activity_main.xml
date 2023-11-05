@@ -15,7 +15,6 @@
         android:text="가속도 센서"
         android:checked="false"
         android:thumbTint="#ff0000"/>
-
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -166,5 +165,15 @@
             android:id="@+id/magnetomZ"
             android:text="0.0"/>
     </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="20dp"/>
+
+    <TextClock
+        android:id="@+id/textClock"
+        android:text="타이머(?)"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
 
 </LinearLayout>
