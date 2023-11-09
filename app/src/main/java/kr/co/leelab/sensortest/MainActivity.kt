@@ -11,10 +11,12 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.SystemClock
 import android.util.Log
+import android.widget.Chronometer
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import kr.co.leelab.sensortest.databinding.ActivityMainBinding
 import org.w3c.dom.Text
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
@@ -37,20 +39,16 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     센서 동작에 따른 타이머
     타이머 일정 시간 초과시 상태 설정
      */
-    lateinit var timerSecond : TextView
-    lateinit var timerMinute : TextView
-    lateinit var timerHour : TextView
-
-    // 현재 센서 미동작시 타이머
-    private var secondCount : Int = 0
-    private var minuteCount : Int = 0
-    private var hourCount : Int = 0
+    lateinit var stateTimer : Chronometer
 
     // 알람을 울리기 위한 타이머  (우선 0으로 초기)
     private var secondAlarm : Int = 0
     private var minuteAlarm : Int = 0
     private var hourAlarm : Int = 0
 
+    private var isTimer : Boolean = false   // 타이머 실행 상태
+
+    lateinit var bingind : ActivityMainBinding
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -80,9 +78,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         }
 
         //타이머 속성
-        timerSecond = findViewById(R.id.timerSecond)
-        timerMinute = findViewById(R.id.timerMinute)
-        timerHour = findViewById(R.id.timerHour)
+        stateTimer = findViewById(R.id.stateTimer)
+
+        stateTimer.start()
 
         //알람 타이머 지정
         secondAlarm = 10
@@ -118,37 +116,19 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 sensorZ.text = event.values[2].toString()
 
                 if(event.values[0] == 0f && event.values[1] == 0f && event.values[2] == 0f) {
-                    sensorState.text = "센서 미동작" //타이머 실행
-                    secondCount += 1
-                    if(secondCount == 60)
-                    {
-                        minuteCount += 1
-                        secondCount = 0
-                        if(minuteCount == 60)
-                        {
-                            hourCount += 1
-                            minuteCount = 0
-                        }
-                    }
-                    // 일정 시간이 초과되면 알람 실행
-                    if(secondCount <= secondAlarm && minuteAlarm <= minuteCount && hourAlarm <= hourCount)
-                    {
-                        Toast.makeText(this,"알람 실행",Toast.LENGTH_SHORT).show()
-                        sensorState.text = "알람 타이머 초과"
-                    }
-                } //타이머 실행
+                    sensorState.text = "센서 미동작"//타이머 실행
+                    isTimer = true
+                    stateTimer.start()
+                }
                 else {
                     sensorState.text = "센서 동작" //타이머 리셋
-                    secondCount = 0
-                    minuteCount = 0
-                    hourCount = 0
+                    isTimer = false
+                    stateTimer.base = SystemClock.elapsedRealtime()
+                    stateTimer.stop()
                 }
                 // [0] x축값, [1] y축값, [2] z축값
             }
             //타이머 적용
-            timerSecond.text = secondCount.toString()
-            timerMinute.text = minuteCount.toString() + ":"
-            timerHour.text = hourCount.toString() + ":"
             Log.d("MainActivity", " x:${event!! .values[0]}, y:${event.values[1]}, z:${event.values[2]} ")
 
         }

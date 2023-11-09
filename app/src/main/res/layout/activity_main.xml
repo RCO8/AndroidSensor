@@ -75,23 +75,10 @@
             android:layout_height="match_parent"
             android:text="타이머 : "/>
 
-        <TextView
-            android:id="@+id/timerHour"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:text="00:"/>
-
-        <TextView
-            android:id="@+id/timerMinute"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:text="00:"/>
-
-        <TextView
-            android:id="@+id/timerSecond"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:text="00"/>
+        <Chronometer
+            android:id="@+id/stateTimer"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"/>
     </LinearLayout>
 
 </LinearLayout>
