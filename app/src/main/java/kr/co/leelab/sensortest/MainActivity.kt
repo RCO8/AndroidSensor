@@ -5,19 +5,17 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.hardware.Sensor
 import android.hardware.SensorEvent
-import android.hardware.SensorManager
 import android.hardware.SensorEventListener
-import androidx.appcompat.app.AppCompatActivity
+import android.hardware.SensorManager
 import android.os.Bundle
 import android.os.SystemClock
 import android.util.Log
 import android.widget.Chronometer
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import kr.co.leelab.sensortest.databinding.ActivityMainBinding
-import org.w3c.dom.Text
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
 
@@ -48,7 +46,11 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     private var isTimer : Boolean = false   // 타이머 실행 상태
 
-    lateinit var bingind : ActivityMainBinding
+    private var elapsedMillis : Long = 0
+    private var nowSecond : Int = 0
+    private var nowMinute : Int = 0
+    private var nowHour : Int = 0
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -79,11 +81,17 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
         //타이머 속성
         stateTimer = findViewById(R.id.stateTimer)
-
         stateTimer.start()
 
         //알람 타이머 지정
         secondAlarm = 10
+    }
+
+    public fun setAlarmTimer(h : Int, m : Int, s : Int) // 설정할 알람 타이머
+    {
+        hourAlarm = h
+        minuteAlarm = m
+        secondAlarm = s
     }
 
     private val acceletorSensor by lazy {           // 지연된 초기화는 딱 한 번 실행됨
@@ -128,8 +136,20 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 }
                 // [0] x축값, [1] y축값, [2] z축값
             }
-            //타이머 적용
-            Log.d("MainActivity", " x:${event!! .values[0]}, y:${event.values[1]}, z:${event.values[2]} ")
+
+            //실행한 타이머 갱신
+            elapsedMillis = SystemClock.elapsedRealtime() - stateTimer.getBase()
+            nowHour = (elapsedMillis / 3600000).toInt()
+            nowMinute = (elapsedMillis - nowHour * 3600000).toInt() / 60000
+            nowSecond = (elapsedMillis - nowHour * 3600000 - nowMinute * 60000).toInt() / 1000
+
+            if(nowHour >= hourAlarm && nowMinute >= minuteAlarm && nowSecond >= secondAlarm)
+            {
+                sensorState.text = "상태 위험!!"
+            }
+
+            //Log.d("MainActivity", " x:${nowHour}, y:${nowMinute}, z:${nowSecond} ")
+            //Log.d("MainActivity", " x:${event!! .values[0]}, y:${event.values[1]}, z:${event.values[2]} ")
 
         }
     }
