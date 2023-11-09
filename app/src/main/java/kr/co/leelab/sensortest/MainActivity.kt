@@ -7,16 +7,15 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorManager
 import android.hardware.SensorEventListener
-import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Log
-import android.widget.CompoundButton
-import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import org.w3c.dom.Text
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
 
@@ -25,58 +24,44 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     /*센서동작할 속성들*/
     //가속도 센서
-    lateinit var accelerSwitch : Switch //활성 여부
     //각 센서가 움직임을 감지받는 축
     lateinit var sensorX : TextView
     lateinit var sensorY : TextView
     lateinit var sensorZ : TextView
 
-    //자이로 센서
-    lateinit var gyroscopeSwitch : Switch
-    lateinit var gyroscopeX : TextView
-    lateinit var gyroscopeY : TextView
-    lateinit var gyroscopeZ : TextView
-
-    //마그네톰 센서
-    lateinit var magnetomSwitch : Switch
-    lateinit var magnetomX : TextView
-    lateinit var magnetomY : TextView
-    lateinit var magnetomZ : TextView
-
-    //각 센서 매니저 생성
-    private val acceletorSensor by lazy {
-        getSystemService(Context.SENSOR_SERVICE) as SensorManager
-    }
-    private val gyroscopeSensor by lazy {
-        getSystemService(Context.SENSOR_SERVICE) as SensorManager
-    }
-    private val magnetomSensor by lazy {
-        getSystemService(Context.SENSOR_SERVICE) as SensorManager
-    }
-
+    lateinit var sensorState : TextView
     private var activityPermission : Boolean = false
+
+    //추가할 속성
+    /*
+    센서 동작에 따른 타이머
+    타이머 일정 시간 초과시 상태 설정
+     */
+    lateinit var timerSecond : TextView
+    lateinit var timerMinute : TextView
+    lateinit var timerHour : TextView
+
+    // 현재 센서 미동작시 타이머
+    private var secondCount : Int = 0
+    private var minuteCount : Int = 0
+    private var hourCount : Int = 0
+
+    // 알람을 울리기 위한 타이머  (우선 0으로 초기)
+    private var secondAlarm : Int = 0
+    private var minuteAlarm : Int = 0
+    private var hourAlarm : Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         //가속도 센서
-        accelerSwitch = findViewById(R.id.accelerSwitch)
         sensorX = findViewById(R.id.sensorX)
         sensorY = findViewById(R.id.sensorY)
         sensorZ = findViewById(R.id.sensorZ)
-        
-        //자이로 센서
-        gyroscopeSwitch = findViewById(R.id.gyroscopeSwitch)
-        gyroscopeX = findViewById(R.id.gyroscopeX)
-        gyroscopeY = findViewById(R.id.gyroscopeY)
-        gyroscopeZ = findViewById(R.id.gyroscopeZ)
 
-        //중력 센서
-        magnetomSwitch = findViewById(R.id.magnetomSwitch)
-        magnetomX = findViewById(R.id.magnetomX)
-        magnetomY = findViewById(R.id.magnetomY)
-        magnetomZ = findViewById(R.id.magnetomZ)
+        sensorState = findViewById(R.id.sensorState)
+
 
         // 퍼미션 확인해주는 데이터
         val sensorPermission = ContextCompat.checkSelfPermission(this,
@@ -86,25 +71,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         if(sensorPermission == PackageManager.PERMISSION_GRANTED || //센서 퍼미션이 권한이 확인되면
             sensorBackgroundPermission == PackageManager.PERMISSION_GRANTED) {
             activityPermission = true
-            //라디오 버튼 식으로 하나만 활성화되게 하기 (다꺼도 상관 없음)
-            accelerSwitch.setOnCheckedChangeListener { p0, isChecked ->
-                if (isChecked) {
-                    gyroscopeSwitch.isChecked = false
-                    magnetomSwitch.isChecked = false
-                }
-            }
-            gyroscopeSwitch.setOnCheckedChangeListener { p0, isChecked ->
-                if (isChecked) {
-                    accelerSwitch.isChecked = false
-                    magnetomSwitch.isChecked = false
-                }
-            }
-            magnetomSwitch.setOnCheckedChangeListener { p0, isChecked ->
-                if (isChecked) {
-                    accelerSwitch.isChecked = false
-                    gyroscopeSwitch.isChecked = false
-                }
-            }
         }
         else    // 안되있으면 설정 요청
         {
@@ -113,64 +79,85 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.BODY_SENSORS_BACKGROUND),MY_PERMISSION_SENSOR)
         }
 
+        //타이머 속성
+        timerSecond = findViewById(R.id.timerSecond)
+        timerMinute = findViewById(R.id.timerMinute)
+        timerHour = findViewById(R.id.timerHour)
+
+        //알람 타이머 지정
+        secondAlarm = 10
+    }
+
+    private val acceletorSensor by lazy {           // 지연된 초기화는 딱 한 번 실행됨
+
+        getSystemService(Context.SENSOR_SERVICE) as SensorManager
 
     }
+
     override fun onResume(){    //센서 등록 메서드
         super.onResume()
+        acceletorSensor.registerListener(
+            this,
+            acceletorSensor.getDefaultSensor(Sensor.TYPE_GYROSCOPE),    //가속도 혹은 자이로 중에 하나를 선택할텐데, 우선 설계하기 쉬운것부터 해보고
+            SensorManager.SENSOR_DELAY_NORMAL
+        )
 
-        if(accelerSwitch.isChecked) {   // 가속도 센서 선언
-            acceletorSensor.registerListener(
-                this,
-                acceletorSensor.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
-                SensorManager.SENSOR_DELAY_NORMAL
-            )
-        }
-        else if(gyroscopeSwitch.isChecked) {    //자이로 센서 선언
-            gyroscopeSensor.registerListener(
-                this,
-                gyroscopeSensor.getDefaultSensor(Sensor.TYPE_GYROSCOPE),
-                SensorManager.SENSOR_DELAY_NORMAL
-            )
-        }
-        else if(magnetomSwitch.isChecked) {     //중력 센서 선언
-            magnetomSensor.registerListener(
-                this,
-                magnetomSensor.getDefaultSensor(Sensor.TYPE_GRAVITY),
-                SensorManager.SENSOR_DELAY_NORMAL
-            )
-        }
     }
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {    // 센서 정밀도 변경시
     //이 메서드는 onSensorChanged를 사용하기 위해 필요한 함수이다 그리고 메인 클래스에서 SensorEventListener를 상속받아야 한다 (interface 상속)
     }
-    override fun onSensorChanged(event: SensorEvent?) {               // 센서 값 변경시
 
-        if(activityPermission) {
-            event?.let {
-                if (accelerSwitch.isChecked) {   //가속도 센서 받아오는 값
-                    sensorX.text = event!!.values[0].toString()
-                    sensorY.text = event.values[1].toString()
-                    sensorZ.text = event.values[2].toString()
-                } else if (gyroscopeSwitch.isChecked) {    //자이로 센서 받아오는 값
-                    gyroscopeX.text = event.values[0].toString()
-                    gyroscopeY.text = event.values[1].toString()
-                    gyroscopeZ.text = event.values[2].toString()
-                } else if (magnetomSwitch.isChecked) {     //중력 센서 받아오는 값
-                    magnetomX.text = event.values[0].toString()
-                    magnetomY.text = event.values[1].toString()
-                    magnetomZ.text = event.values[2].toString()
+    override fun onSensorChanged(event: SensorEvent?) {               // 센서 값 변경시
+        //타이머 리셋 (동작시 상태 활성)
+        if(activityPermission)
+        {
+            event.let {
+                //가속도 센서 받아오는 값
+                sensorX.text = event!!.values[0].toString()
+                sensorY.text = event.values[1].toString()
+                sensorZ.text = event.values[2].toString()
+
+                if(event.values[0] == 0f && event.values[1] == 0f && event.values[2] == 0f) {
+                    sensorState.text = "센서 미동작" //타이머 실행
+                    secondCount += 1
+                    if(secondCount == 60)
+                    {
+                        minuteCount += 1
+                        secondCount = 0
+                        if(minuteCount == 60)
+                        {
+                            hourCount += 1
+                            minuteCount = 0
+                        }
+                    }
+                    // 일정 시간이 초과되면 알람 실행
+                    if(secondCount <= secondAlarm && minuteAlarm <= minuteCount && hourAlarm <= hourCount)
+                    {
+                        Toast.makeText(this,"알람 실행",Toast.LENGTH_SHORT).show()
+                        sensorState.text = "알람 타이머 초과"
+                    }
+                } //타이머 실행
+                else {
+                    sensorState.text = "센서 동작" //타이머 리셋
+                    secondCount = 0
+                    minuteCount = 0
+                    hourCount = 0
                 }
-                //Log.d("MainActivity", " x:${event.values[0]}, y:${event.values[1]}, z:${event.values[2]} ")
                 // [0] x축값, [1] y축값, [2] z축값
             }
+            //타이머 적용
+            timerSecond.text = secondCount.toString()
+            timerMinute.text = minuteCount.toString() + ":"
+            timerHour.text = hourCount.toString() + ":"
+            Log.d("MainActivity", " x:${event!! .values[0]}, y:${event.values[1]}, z:${event.values[2]} ")
+
         }
     }
     // ⑤ 리스너 해제
     override fun onPause() {
         super.onPause()
         acceletorSensor.unregisterListener(this)
-        gyroscopeSensor.unregisterListener(this)
-        magnetomSensor.unregisterListener(this)
+        sensorState.text="센서 미동작"
     }
 
     //퍼미션 동작
