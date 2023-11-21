@@ -43,6 +43,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private var secondAlarm : Int = 0
     private var minuteAlarm : Int = 0
     private var hourAlarm : Int = 0
+    private var dayAlarm : Int = 0
 
     private var isTimer : Boolean = false   // 타이머 실행 상태
 
@@ -50,6 +51,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private var nowSecond : Int = 0
     private var nowMinute : Int = 0
     private var nowHour : Int = 0
+    private var nowDay : Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -84,14 +86,13 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         stateTimer.start()
 
         //알람 타이머 지정
-        secondAlarm = 10
+        setAlarmTimer(0,5)
     }
 
-    public fun setAlarmTimer(h : Int, m : Int, s : Int) // 설정할 알람 타이머
+    public fun setAlarmTimer(d : Int, h : Int) // 설정할 알람 타이머
     {
+        dayAlarm = d
         hourAlarm = h
-        minuteAlarm = m
-        secondAlarm = s
     }
 
     private val acceletorSensor by lazy {           // 지연된 초기화는 딱 한 번 실행됨
@@ -142,10 +143,12 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             nowHour = (elapsedMillis / 3600000).toInt()
             nowMinute = (elapsedMillis - nowHour * 3600000).toInt() / 60000
             nowSecond = (elapsedMillis - nowHour * 3600000 - nowMinute * 60000).toInt() / 1000
+            nowDay = (nowHour * 24).toInt()
 
-            if(nowHour >= hourAlarm && nowMinute >= minuteAlarm && nowSecond >= secondAlarm)
-            {
-                sensorState.text = "상태 위험!!"
+            if(nowDay >= dayAlarm) {
+                if (nowHour >= hourAlarm) {
+                    sensorState.text = "상태 위험!!"    //알람발생
+                }
             }
 
             //Log.d("MainActivity", " x:${nowHour}, y:${nowMinute}, z:${nowSecond} ")
